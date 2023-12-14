@@ -1,0 +1,193 @@
+/*create vpc and subnet and igw and routetable
+create a volume and ec2 instance and print the volumeid&instance id
+attach the volume to the ec2 instance
+create the eip and create ec2 instance and attach eip ti ec2 instance
+create s3 bucket& create ec2instance and autoassign publicip and enable cloudwatch monitoring
+and attach the rootvolume about 15 
+
+
+*/
+
+// creating instance
+
+resource aws_instance "srinu" {
+   ami = "ami-06e4ca05d431835e9"
+   instance_type = "t2.micro"
+   subnet_id      = aws_subnet.sn1.id
+   
+   associate_public_ip_address = "false"
+   monitoring = "true"
+   root_block_device {
+   volume_type = "gp2"
+   volume_size = 15
+   }
+   
+   tags = {
+   Name = "srinu"
+   }
+}
+
+// creating vpc
+
+resource aws_vpc "vpc1" {
+   cidr_block = "10.0.0.0/16"
+    tags = {
+   Name = "myvpc"
+   }
+}
+
+// creating subnet
+
+resource aws_subnet "sn1"{
+  vpc_id = aws_vpc.vpc1.id
+  cidr_block = "10.0.0.0/25"
+  availability_zone = "us-west-1c"
+   tags = {
+   Name = "SN1"
+   }
+}
+
+//creating IGW
+
+resource aws_internet_gateway "igw1"{
+   vpc_id = aws_vpc.vpc1.id
+    tags = {
+   Name = "IGW1"
+   }
+}
+
+//creating route tables and routetable association
+
+resource "aws_route_table" "rt1" {
+  vpc_id = aws_vpc.vpc1.id
+  tags ={
+  Name = "RT1"
+  }
+  }
+  
+resource "aws_route_table_association" "rt1as" {
+  subnet_id      = aws_subnet.sn1.id
+  route_table_id = aws_route_table.rt1.id
+}
+
+// creating volume 
+
+resource "aws_ebs_volume" "ebsv1" {
+  availability_zone = "us-west-1c"
+  size              = 10
+
+  tags = {
+    Name = "EBSV1"
+  }
+}
+
+resource "aws_volume_attachment" "ebs1_att" {
+  device_name = "/dev/sdf"
+  volume_id   = aws_ebs_volume.ebsv1.id
+  instance_id = aws_instance.srinu.id
+}
+
+//creating EPI and attachment
+
+resource "aws_eip" "epi1" {
+  instance = aws_instance.srinu.id
+  domain   = "vpc"
+}
+
+resource "aws_eip_association" "eip1_assoc" {
+  instance_id   = aws_instance.srinu.id
+  allocation_id = aws_eip.epi1.id
+}
+
+// print volumeid,instanceid,subnetid,eipallocateid,
+
+output "instanceid"{
+  value = aws_instance.srinu.id
+}
+
+output "subnetid" {
+  value = aws_subnet.sn1.id
+}
+
+output "epiid" {
+  value = aws_eip.epi1.id
+}
+
+output "volumeid" {
+  value = aws_ebs_volume.ebsv1.id
+}
+
+output "azid"{
+  value = aws_subnet.sn1.availability_zone
+}
+
+//creating s3 bucket
+
+resource "aws_s3_bucket" "s3b1" {
+  bucket = "myuniquebucketname123"
+
+  tags = {
+    Name        = "t-s"
+  }
+}
+
+// monitoring
+
+/*create s3 bucket& create ec2instance and autoassign publicip and enable cloudwatch monitoring
+and attach the rootvolume about 15 
+
+
+
+resource "aws_s3_bucket" "s3" {
+  bucket = "mytgk"
+
+  tags = {
+    Name        = "tgkbucket"
+  
+  }
+}
+
+resource "aws_vpc" "vpc1" {
+  cidr_block    = "10.0.0.0/16"
+
+  tags = {
+    Name = "myvpc"
+  }
+}
+
+resource "aws_subnet" "sn1" {
+  vpc_id     = aws_vpc.vpc1.id
+  cidr_block = "10.0.0.0/24"
+ availability_zone = "ap-south-1a"  
+ map_public_ip_on_launch = "true"
+
+  tags = {
+    Name = "mysn1"
+  }
+}
+
+
+resource "aws_key_pair" "keypair" {
+  key_name   = "tgk.pem"
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyR2Q5frMTr9pDCpqVSWfmR12DoP5zKx8eE4QSWjCYpYTf/8ThKYhMOkukyyjEq/6kYlqYYJB3fJf7f4S/MWFtfbrKGKCK0CuSiG9FH7CHCKNLWtfIFIcOawp9390cw1Zt87PhExkGkT05S9VsNkHYz76oezW3A7FJfnOTDseXZCnFNlVHxOWEQNveuT1rJ7h4cx9HQjuqsMzs4XshlET8v6gMgFWGVrigawP3ojbM5prI2Yqe2qLNZGLX0ZfbQIsF8z9Mk6awRhelnKmk0YOCS2BrqSpz3+S/HCa3FKBC+Y/ozU4in2umKAaHaEiSHyisvttB+X2wyodiNy+xggSk9XmPyGLaJztP3rY0mzlJ+SB+O0oG90QlB8fbcm23A36GWWe30sTJuI2wQZPmOkdL+5+XLUipjOazJ32LgVWMRjJySGjTqZAxlSxRr4aC5X7unu/NuvFJNKFHQw6yV3ojYlzrx4fizQLEMcfWfNRbeVmYBOMABQck4Hm3KaEwtkk= Goutham@DESKTOP-MBMMCTL"
+ tags = {
+    Name = "mykey"
+  }
+}
+
+resource "aws_instance" "i1" {
+ami = "ami-02a2af70a66af6dfb"
+availability_zone  = "ap-south-1a"
+instance_type = "t2.micro"
+key_name = aws_key_pair.keypair.id
+subnet_id =aws_subnet.sn1.id
+ root_block_device {
+    volume_type = "gp2"
+    volume_size = 15
+  }
+
+monitoring = "true"
+ tags = {
+    Name = "myins"
+  }
+}
